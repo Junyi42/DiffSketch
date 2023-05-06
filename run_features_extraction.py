@@ -60,7 +60,7 @@ def main():
         "--config",
         type=str,
         nargs="?",
-        default="configs/pnp/feature-extraction-generated.yaml",
+        default="/hdd/junyi/plug-and-play/configs/generate",
         help="path to the feature extraction config file"
     )
     parser.add_argument(

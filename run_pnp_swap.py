@@ -39,8 +39,9 @@ def main():
         args = json.load(f)
         seed = args["seed"]
         # source_prompt = args["prompt"]
-    with open(os.path.join(exp_path_root, exp_config.target_experimen_name, "args.json"), "r") as f:
+    with open(os.path.join(exp_path_root, exp_config.target_experiment_name, "args.json"), "r") as f:
         args2 = json.load(f)
+        # seed = args["seed"]
         target_prompt = args2["prompt"]
     negative_prompt = target_prompt if exp_config.negative_prompt is None else exp_config.negative_prompt
 
@@ -90,7 +91,7 @@ def main():
 
     def load_target_features():
         self_attn_output_block_indices = [4,5,6,7,8,9,10,11]
-        out_layers_output_block_indices = [4]
+        out_layers_output_block_indices = [2,3,4,5,6,7,8,9,10,11]
         output_block_self_attn_map_injection_thresholds = [ddim_steps // 2] * len(self_attn_output_block_indices)
         feature_injection_thresholds = [exp_config.feature_injection_threshold]
         target_features = []
@@ -106,12 +107,13 @@ def main():
 
         iterator = tqdm(time_range, desc="loading source experiment features", total=total_steps)
         
-        src_feature=torch.load(os.path.join(exp_path_root, exp_config.source_experiment_name,"fused_feature.pt")) # (1,1,3600,768*2)
-        tgt_feature=torch.load(os.path.join(exp_path_root, exp_config.target_experiment_name,"fused_feature.pt")) # (1,1,3600,768*2)
-        src_mask=torch.load(os.path.join(exp_path_root, exp_config.source_experiment_name,"mask.pt")) # mask1 shape (840,840)
-        tgt_mask=torch.load(os.path.join(exp_path_root, exp_config.target_experiment_name,"mask.pt")) # mask2 shape (840,840)
+        src_feature=torch.load(os.path.join(exp_path_root, exp_config.source_experiment_name,"fused_feature.pt")).cuda() # (1,1,3600,768*2)
+        tgt_feature=torch.load(os.path.join(exp_path_root, exp_config.target_experiment_name,"fused_feature.pt")).cuda() # (1,1,3600,768*2)
+        src_mask=torch.load(os.path.join(exp_path_root, exp_config.source_experiment_name,"mask.pt")).cuda() # mask1 shape (840,840)
+        tgt_mask=torch.load(os.path.join(exp_path_root, exp_config.target_experiment_name,"mask.pt")).cuda() # mask2 shape (840,840)
 
-
+        src_feature_reshaped = src_feature.squeeze().permute(1,0).reshape(1,-1,60,60)
+        tgt_feature_reshaped = tgt_feature.squeeze().permute(1,0).reshape(1,-1,60,60)
 
         for i, t in enumerate(iterator):
             current_features = {}
@@ -127,35 +129,43 @@ def main():
                     # resize the mask, feature to the size of the output_q
                     # for each patch in the output_q, if it is in the mask, find the corresponding patch in the target_output_q and swap them
                     # the corresponding patch is the one with the highest cosine similarity according to the src_feature and tgt_feature
+                    patch_size = int(torch.sqrt(torch.tensor(output_q.shape[1])).item())
+                    # Resize the mask and feature to the size of output_q
                     swapped_output_q = output_q.clone()
                     swapped_output_k = output_k.clone()
 
-                    patch_size = int(torch.sqrt(torch.tensor(output_q.shape[1])).item())
+                    if patch_size <= 0:
+                        swapped_output_q = output_q.clone()
+                        swapped_output_k = output_k.clone()
 
-                    src_feature_reshaped = src_feature.squeeze().permute(1,0).reshape(-1,60,60)
-                    src_feature_upsampled = F.interpolate(src_feature_reshaped, size=(patch_size, patch_size), mode='bilinear').squeeze()  # Shape: (768*2, patch, patch)
-                    
-                    tgt_feature_reshaped = tgt_feature.squeeze().permute(1,0).reshape(-1,60,60)
-                    tgt_feature_upsampled = F.interpolate(tgt_feature_reshaped.squeeze().permute(1,0).reshape(-1,60,60), size=(patch_size, patch_size), mode='bilinear').squeeze()  # Shape: (768*2, patch, patch)
-                    # Calculate the cosine similarity between src_feature and tgt_feature
-                    cosine_similarity = torch.nn.CosineSimilarity(dim=-1)
-                    similarity_matrix = cosine_similarity(src_feature_upsampled.reshape(src_feature_upsampled.shape[0],-1).permute(1,0), tgt_feature_upsampled.reshape(tgt_feature_upsampled.shape[0],-1).permute(1,0))  # Shape: (patch_size * patch_size, patch_size * patch_size)
-                    # Resize the mask and feature to the size of output_q
-                    resized_src_mask = F.interpolate(src_mask.unsqueeze(0).unsqueeze(0), size=(patch_size, patch_size), mode='nearest').squeeze()  # Shape: (patch_size, patch_size)
-                    resized_tgt_mask = F.interpolate(tgt_mask.unsqueeze(0).unsqueeze(0), size=(patch_size, patch_size), mode='nearest').squeeze()  # Shape: (patch_size, patch_size)
+                        resized_src_mask = F.interpolate(src_mask.unsqueeze(0).unsqueeze(0), size=(patch_size, patch_size), mode='nearest').squeeze()  # Shape: (patch_size, patch_size)
+                        resized_tgt_mask = F.interpolate(tgt_mask.unsqueeze(0).unsqueeze(0), size=(patch_size, patch_size), mode='nearest').squeeze()  # Shape: (patch_size, patch_size)
+                        
+                        src_feature_upsampled = F.interpolate(src_feature_reshaped, size=(patch_size, patch_size), mode='bilinear').squeeze()  # Shape: (768*2, patch, patch)
+                        tgt_feature_upsampled = F.interpolate(tgt_feature_reshaped, size=(patch_size, patch_size), mode='bilinear').squeeze()  # Shape: (768*2, patch, patch)
+                        
+                        # mask the feature
+                        src_feature_upsampled = src_feature_upsampled * resized_src_mask.repeat(src_feature_upsampled.shape[0],1,1)
+                        tgt_feature_upsampled = tgt_feature_upsampled * resized_tgt_mask.repeat(src_feature_upsampled.shape[0],1,1)
+                        src_feature_upsampled[src_feature_upsampled == 0] = 100000
+                        tgt_feature_upsampled[tgt_feature_upsampled == 0] = 100000
 
-                    for patch_idx in range(output_q.shape[1]):
-                        # If the patch is in the src_mask, find the corresponding patch in the target_output_q and swap them
-                        if resized_src_mask[patch_idx // patch_size, patch_idx % patch_size] == 1:
-                            # Find the corresponding patch with the highest cosine similarity
-                            tgt_patch_idx = similarity_matrix[patch_idx].argmax()
+                        # Calculate the cosine similarity between src_feature and tgt_feature
+                        src_features_2d=src_feature_upsampled.reshape(src_feature_upsampled.shape[0],-1).permute(1,0)
+                        tgt_features_2d=tgt_feature_upsampled.reshape(tgt_feature_upsampled.shape[0],-1).permute(1,0)  # Shape: (patch_size * patch_size, patch_size * patch_size)
 
-                            # Swap the patches in output_q
-                            swapped_output_q[:, patch_idx] = target_output_q[:, tgt_patch_idx]
+                        for patch_idx in range(output_q.shape[1]):
+                            # If the patch is in the src_mask, find the corresponding patch in the target_output_q and swap them
+                            if resized_src_mask[patch_idx // patch_size, patch_idx % patch_size] == 1:
+                                # Find the corresponding patch with the highest cosine similarity
+                                distances = torch.linalg.norm(tgt_features_2d - src_features_2d[patch_idx], dim=1)
+                                tgt_patch_idx = torch.argmin(distances)
+                                # Swap the patches in output_q
+                                swapped_output_q[:, patch_idx] = target_output_q[:, tgt_patch_idx]
 
-                            # If swapped_output_k is not None, swap the patches in output_k as well
-                            if swapped_output_k is not None:
-                                swapped_output_k[:, patch_idx] = target_output_k[:, tgt_patch_idx]
+                                # If swapped_output_k is not None, swap the patches in output_k as well
+                                if swapped_output_k is not None:
+                                    swapped_output_k[:, patch_idx] = target_output_k[:, tgt_patch_idx]
 
                     current_features[f'output_block_{output_block_idx}_self_attn_q'] = swapped_output_q
                     current_features[f'output_block_{output_block_idx}_self_attn_k'] = swapped_output_k
@@ -174,22 +184,31 @@ def main():
                     # Calculate the cosine similarity between src_feature and tgt_feature for out_layers
                     src_feature_upsampled_out_layers = F.interpolate(src_feature_reshaped, size=(output.shape[2], output.shape[3]), mode='bilinear').squeeze()  # Shape: (768*2, 16, 16)
                     tgt_feature_upsampled_out_layers = F.interpolate(tgt_feature_reshaped, size=(output.shape[2], output.shape[3]), mode='bilinear').squeeze()  # Shape: (768*2, 16, 16)
-                    similarity_matrix_out_layers = cosine_similarity(src_feature_upsampled_out_layers.reshape(src_feature_upsampled_out_layers.shape[0],-1).permute(1,0), tgt_feature_upsampled_out_layers.reshape(tgt_feature_upsampled_out_layers.shape[0],-1).permute(1,0))  # Shape: (16 * 16, 16 * 16)
                     
+                    # mask the feature
+                    src_feature_upsampled_out_layers = src_feature_upsampled_out_layers * resized_src_mask_out_layers.repeat(src_feature_upsampled_out_layers.shape[0],1,1)
+                    tgt_feature_upsampled_out_layers = tgt_feature_upsampled_out_layers * resized_tgt_mask_out_layers.repeat(src_feature_upsampled_out_layers.shape[0],1,1)
+                    src_feature_upsampled_out_layers[src_feature_upsampled_out_layers == 0] = 100000
+                    tgt_feature_upsampled_out_layers[tgt_feature_upsampled_out_layers == 0] = 100000
+                    src_features_2d_out=src_feature_upsampled_out_layers.reshape(src_feature_upsampled_out_layers.shape[0],-1).permute(1,0)
+                    tgt_features_2d_out=tgt_feature_upsampled_out_layers.reshape(tgt_feature_upsampled_out_layers.shape[0],-1).permute(1,0)
                     # TODO: swap the feature maps
                     swapped_output = output.clone()
+                    
+                    if output.shape[2] <= 0:
+                        swapped_output = output.clone()
+                        for patch_idx in range(output.shape[2] * output.shape[3]):
+                            # If the patch is in the resized_src_mask_out_layers, find the corresponding patch in the target_output and swap them
+                            if resized_src_mask_out_layers[patch_idx // output.shape[3], patch_idx % output.shape[3]] == 1:
+                                # Find the corresponding patch with the highest cosine similarity
+                                distances = torch.linalg.norm(tgt_features_2d_out - src_features_2d_out[patch_idx], dim=1)
+                                tgt_patch_idx = torch.argmin(distances)
 
-                    for patch_idx in range(output.shape[2] * output.shape[3]):
-                        # If the patch is in the resized_src_mask_out_layers, find the corresponding patch in the target_output and swap them
-                        if resized_src_mask_out_layers[patch_idx // output.shape[3], patch_idx % output.shape[3]] == 1:
-                            # Find the corresponding patch with the highest cosine similarity
-                            tgt_patch_idx = similarity_matrix_out_layers[patch_idx].argmax()
+                                tgt_patch_row = tgt_patch_idx // output.shape[3]
+                                tgt_patch_col = tgt_patch_idx % output.shape[3]
 
-                            tgt_patch_row = tgt_patch_idx // output.shape[3]
-                            tgt_patch_col = tgt_patch_idx % output.shape[3]
-
-                            # Swap the patches in output
-                            swapped_output[:, :, patch_idx // output.shape[3], patch_idx % output.shape[3]] = target_output[:, :, tgt_patch_row, tgt_patch_col]
+                                # Swap the patches in output
+                                swapped_output[:, :, patch_idx // output.shape[3], patch_idx % output.shape[3]] = target_output[:, :, tgt_patch_row, tgt_patch_col]
 
                     current_features[f'output_block_{output_block_idx}_out_layers'] = swapped_output
 
@@ -201,10 +220,14 @@ def main():
     prompts = exp_config.prompts
     assert prompts is not None
 
-    start_code_path = f"{exp_path_root}/{exp_config.source_experiment_name}/z_enc.pt"
-    start_code = torch.load(start_code_path).cuda() if os.path.exists(start_code_path) else None
+    src_start_code_path = f"{exp_path_root}/{exp_config.source_experiment_name}/z_enc.pt"
+    src_start_code = torch.load(src_start_code_path).cuda() if os.path.exists(src_start_code_path) else None
+    trg_start_code_path = f"{exp_path_root}/{exp_config.target_experiment_name}/z_enc.pt"
+    trg_start_code = torch.load(trg_start_code_path).cuda() if os.path.exists(trg_start_code_path) else None
+    start_code = None
     if start_code is not None:
         start_code = start_code.repeat(batch_size, 1, 1, 1)
+    # start_code=None
 
     precision_scope = autocast if opt.precision=="autocast" else nullcontext
     injected_features = load_target_features()

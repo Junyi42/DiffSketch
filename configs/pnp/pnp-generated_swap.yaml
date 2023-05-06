@@ -1,5 +1,5 @@
-source_experiment_name: "cat_on_street1"  # the experiment name of the source image
-target_experimen_name: "cat_on_grass"
+source_experiment_name: "cat_on_street"  # the experiment name of the source image
+target_experiment_name: "cat_on_grass1"
 prompts: # text prompts for translations
   - "a photo of a cat on the street"
   # - "a photo of a zebra in the snow"
@@ -9,7 +9,7 @@ scale: 7.5 # unconditional guidance scale. Note that a higher value encourages d
 num_ddim_sampling_steps: # if left empty, defaults to the ddim_steps arg used in the source experiment
 
 # Control the level of structure preservation with injection timestep threshold
-feature_injection_threshold: 40 # should be in [0, num_ddim_sampling_steps]
+feature_injection_threshold: 50 # should be in [0, num_ddim_sampling_steps]
 
 # Control the level of deviation from the source image with Negative prompting params.
 negative_prompt: "a photo of a cat on grass" # if left blank, defaults to the source prompt
