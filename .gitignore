@@ -1,0 +1,7 @@
+.DS_STORE
+.idea
+experiments
+__pycache__
+*.pyc
+*.pyo
+*.pyd

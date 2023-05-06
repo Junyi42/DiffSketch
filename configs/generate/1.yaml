@@ -1,0 +1,7 @@
+config:
+  experiment_name: "cat_on_grass"
+  init_img: ""
+  prompt: "a photo of a cat on grass"
+  scale: 5.0
+  ddim_steps: 50
+  seed: 4
