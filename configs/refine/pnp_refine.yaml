@@ -1,0 +1,20 @@
+config:
+  experiment_name: "cat_src_refine_sd"
+  init_img: "/hdd/junyi/plug-and-play/experiments/cat_src/sd/swapped_image.png"
+  ddim_steps: 999 # we use 999 steps for the best reconstruction
+  save_feature_timesteps: 50
+
+prompts: # text prompts for translations
+  - "a photo of a cat, realistic, high resolution, high quality"
+
+scale: 2 # unconditional guidance scale. Note that a higher value encourages deviation from the source image
+num_ddim_sampling_steps: 50 # if left empty, defaults to the ddim_steps_callback arg used in the source experiment
+
+# Control the level of structure preservation with injection timestep threshold
+feature_injection_threshold: 40 # should be in [0, num_ddim_sampling_steps]
+
+# Control the level of deviation from the source image with Negative prompting params.
+negative_prompt: "unrealisitic, low resolution, low quality, unreal"
+negative_prompt_alpha: 1.0 # ∈ [0, 1], determines the initial strength of negative-prompting (lower = stronger)
+negative_prompt_schedule: "linear" # ∈ {"linear", "constant", "exp"}, determines the attenuation schedule of negative-prompting
+# setting negative_prompt_alpha = 1.0, negative_prompt_schedule = "constant" is equivalent to not using negative prompting

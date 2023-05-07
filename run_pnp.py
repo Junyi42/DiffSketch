@@ -18,7 +18,7 @@ from run_features_extraction import load_model_from_config
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default = 'configs/pnp/pnp-generated.yaml')
+    parser.add_argument('--config', default = 'configs/pnp/pnp-real.yaml')
     parser.add_argument('--ddim_eta', type=float, default=0.0, help='DDIM eta')
     parser.add_argument('--H', type=int, default=512, help='image height, in pixel space')
     parser.add_argument('--W', type=int, default=512, help='image width, in pixel space')
