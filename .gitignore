@@ -1,7 +1,9 @@
 .DS_STORE
 .idea
-experiments
+*.pt
 __pycache__
 *.pyc
 *.pyo
 *.pyd
+predicted_samples*
+PCA_features_vis

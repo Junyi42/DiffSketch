@@ -1,0 +1,1 @@
+{"source_experiment_name": "cat_on_street_refine", "prompts": ["a photo of a cat on the street, realistic, high resolution, high quality"], "scale": 1.5, "num_ddim_sampling_steps": 50, "feature_injection_threshold": 40, "negative_prompt": "unrealisitic, low resolution, low quality, unreal", "negative_prompt_alpha": 1.0, "negative_prompt_schedule": "linear"}

@@ -1,0 +1,1 @@
+{"experiment_name": "cat_on_street_refine_sd", "init_img": "/hdd/junyi/plug-and-play/experiments/cat_on_street/sd/swapped_image.png", "ddim_steps": 998, "save_feature_timesteps": [50, 50, 50, 50], "seed": -1, "prompt": "", "scale": 1.0}
