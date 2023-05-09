@@ -1,6 +1,6 @@
 config:
-  experiment_name: "cat_src_refine_sd"
-  init_img: "/hdd/junyi/plug-and-play/experiments/cat_src/sd/swapped_image.png"
+  experiment_name: "cat_on_street_refine_sd" # name of the experiment, used for logging
+  init_img: "/hdd3/junyi/pnp_swap/experiments/cat_on_street/sd/swapped_image.png" # path to the source image
   ddim_steps: 999 # we use 999 steps for the best reconstruction
   save_feature_timesteps: 50
 
@@ -18,3 +18,7 @@ negative_prompt: "unrealisitic, low resolution, low quality, unreal"
 negative_prompt_alpha: 1.0 # ∈ [0, 1], determines the initial strength of negative-prompting (lower = stronger)
 negative_prompt_schedule: "linear" # ∈ {"linear", "constant", "exp"}, determines the attenuation schedule of negative-prompting
 # setting negative_prompt_alpha = 1.0, negative_prompt_schedule = "constant" is equivalent to not using negative prompting
+
+# inverted image will be saved at 'experiment_name'/samples
+# refined image will be saved at 'experiment_name'/translations//hdd3/junyi/pnp_swap/experiments/cat_on_grass1/translations/2_a_photo_of_a_cat
+```
