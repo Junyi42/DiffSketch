@@ -1,6 +1,6 @@
 config:
-  experiment_name: "sandwich_refine_512_mask_sd" # name of the experiment, used for logging
-  init_img: "/hdd3/junyi/odise/data/test_bench/Gen_mask_512_3500/000000000283_fuse/swapped_image.png" # path to the source image
+  experiment_name: "_refine_512_mask_sd" # name of the experiment, used for logging
+  init_img: "./swapped_image.png" # path to the source image
   ddim_steps: 999 # we use 999 steps for the best reconstruction
   save_feature_timesteps: 50
 

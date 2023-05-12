@@ -62,7 +62,21 @@ def main():
         "--config",
         type=str,
         nargs="?",
-        default="/hdd/junyi/plug-and-play/configs/refine",
+        default="./configs/pnp_refine_all.yaml",
+        help="path to the feature extraction config file"
+    )
+    parser.add_argument(
+        "--img_dir_path",
+        type=str,
+        nargs="?",
+        default="PATH_TO_SWAPPED_IMAGES",
+        help="path to the feature extraction config file"
+    )
+    parser.add_argument(
+        "--text_dir_path",
+        type=str,
+        nargs="?",
+        default="PATH_TO_CLASS_INFO",
         help="path to the feature extraction config file"
     )
     parser.add_argument(
@@ -133,34 +147,32 @@ def main():
     unet_model = model.model.diffusion_model
     sampler = DDIMSampler(model)
 
-    config_dir_path=opt.config
-    config_paths=[]
+    img_dir_path=opt.img_dir_path
+    img_paths=[]
     
-    # 遍历目录中的所有文件
-    for root, dirs, files in os.walk(config_dir_path):
+    # iterate through all images in the directory
+    for root, dirs, files in os.walk(img_dir_path):
         for file in files:
-            # 如果文件名以".config"结尾，则将路径添加到列表中
-            if file.endswith(".yaml"):
+            if file.endswith(".jpg") or file.endswith(".png"):
                 path = os.path.join(root, file)
-                config_paths.append(path)
+                img_paths.append(path)
 
 
-    for config_path in config_paths:
-        exp_config = OmegaConf.load(config_path)
-        
+    for img_path in img_paths: # ../odise/data/test_bench/Gen_mask_512_3500/000000010573_fuse/swapped_image.png
+        exp_config = OmegaConf.load(opt.config)
+        experiment_name = img_path.split("/")[-2] + exp_config.config.experiment_name # "000000010573_fuse" +  experiment_name
         exp_path_root = setup_config.config.exp_path_root
 
-        if exp_config.config.init_img != '':
-            exp_config.config.seed = -1
-            exp_config.config.prompt = ""
-            exp_config.config.scale = 1.0
+        exp_config.config.seed = -1
+        exp_config.config.prompt = ""
+        exp_config.config.scale = 1.0
             
         seed = exp_config.config.seed 
         seed_everything(seed)
 
         save_feature_timesteps = exp_config.config.ddim_steps if exp_config.config.init_img == '' else exp_config.config.save_feature_timesteps
 
-        outpath = f"{exp_path_root}/{exp_config.config.experiment_name}"
+        outpath = f"{exp_path_root}/{experiment_name}"
 
         callback_timesteps_to_save = [save_feature_timesteps]
         if os.path.exists(outpath):
@@ -170,12 +182,9 @@ def main():
                     args = json.load(f)
                 callback_timesteps_to_save = args["save_feature_timesteps"] + callback_timesteps_to_save
 
-        predicted_samples_path = os.path.join(outpath, "predicted_samples")
-        feature_maps_path = os.path.join(outpath, "feature_maps")
-        sample_path = os.path.join(outpath, "samples")
+
+        sample_path = os.path.join(outpath, "inversion")
         os.makedirs(outpath, exist_ok=True)
-        os.makedirs(predicted_samples_path, exist_ok=True)
-        os.makedirs(feature_maps_path, exist_ok=True)
         os.makedirs(sample_path, exist_ok=True)
 
         # save parse_args in experiment dir
@@ -184,19 +193,9 @@ def main():
             args_to_save["save_feature_timesteps"] = callback_timesteps_to_save
             json.dump(args_to_save, f)
 
-        def save_sampled_img(x, i, save_path):
-            x_samples_ddim = model.decode_first_stage(x)
-            x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
-            x_samples_ddim = x_samples_ddim.cpu().permute(0, 2, 3, 1).numpy()
-            x_image_torch = torch.from_numpy(x_samples_ddim).permute(0, 3, 1, 2)
-            x_sample = x_image_torch[0]
-            x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-            img = Image.fromarray(x_sample.astype(np.uint8))
-            img.save(os.path.join(save_path, f"{i}.png"))
-
         def ddim_sampler_callback(pred_x0, x_t, i):
             save_feature_maps_callback(i)
-            save_sampled_img(pred_x0, i, predicted_samples_path)
+            # save_sampled_img(pred_x0, i, predicted_samples_path)
 
         def save_feature_maps(blocks, i, feature_type="input_block"):
             block_idx = 0
@@ -220,9 +219,12 @@ def main():
 
         def save_feature_map(feature_map, filename):
             memory_storage[filename] = feature_map
+        
+        # cls_name="cat" # TODO, pass the cls_name from text
+        cls_name = None
 
         assert exp_config.config.prompt is not None
-        prompts = [exp_config.config.prompt]
+        prompts = [exp_config.config.prompt.replace('object', cls_name)] if cls_name else [exp_config.config.prompt]
 
         precision_scope = autocast if opt.precision=="autocast" else nullcontext
         with torch.no_grad():
@@ -236,8 +238,8 @@ def main():
 
                     z_enc = None
                     if exp_config.config.init_img != '':
-                        assert os.path.isfile(exp_config.config.init_img)
-                        init_image = load_img(exp_config.config.init_img).to(device)
+                        assert os.path.isfile(img_path)
+                        init_image = load_img(img_path).to(device)
                         init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))
                         ddim_inversion_steps = 999
                         z_enc, _ = sampler.encode_ddim(init_latent, num_steps=ddim_inversion_steps, conditioning=c,unconditional_conditioning=uc,unconditional_guidance_scale=exp_config.config.scale)
@@ -275,8 +277,12 @@ def main():
         exp_path_root_config = OmegaConf.load("./configs/pnp/setup.yaml")
         exp_path_root = exp_path_root_config.config.exp_path_root
         
+
+        # inversion done, start refinement
+
+
         # read seed from args.json of source experiment
-        with open(os.path.join(exp_path_root, exp_config.config.experiment_name, "args.json"), "r") as f:
+        with open(os.path.join(exp_path_root, experiment_name, "args.json"), "r") as f:
             args = json.load(f)
             seed = args["seed"]
             source_prompt = args["prompt"]
@@ -293,8 +299,7 @@ def main():
         seed = torch.initial_seed()
         opt.seed = seed
 
-        translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
-        outpaths = [os.path.join(f"{exp_path_root}/{exp_config.config.experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
+        outpaths = [os.path.join(f"{exp_path_root}/{experiment_name}/refined")]
         out_label = f"INJECTION_T_{exp_config.feature_injection_threshold}_STEPS_{ddim_steps}"
         out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}"
 
@@ -306,20 +311,9 @@ def main():
             with open(os.path.join(outpaths[i], "args.json"), "w") as f:
                 json.dump(OmegaConf.to_container(exp_config), f)
 
-        def save_sampled_img(x, i, save_paths):
-            for im in range(x.shape[0]):
-                x_samples_ddim = model.decode_first_stage(x[im].unsqueeze(0))
-                x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
-                x_samples_ddim = x_samples_ddim.cpu().permute(0, 2, 3, 1).numpy()
-                x_image_torch = torch.from_numpy(x_samples_ddim).permute(0, 3, 1, 2)
-                x_sample = x_image_torch[0]
-
-                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                img = Image.fromarray(x_sample.astype(np.uint8))
-                img.save(os.path.join(save_paths[im], f"{i}.png"))
-
         def ddim_sampler_callback(pred_x0, xt, i):
-            save_sampled_img(pred_x0, i, predicted_samples_paths)
+            # save_sampled_img(pred_x0, i, predicted_samples_paths)
+            pass
 
         def load_feature_map(filename):
             return memory_storage[filename]
@@ -358,7 +352,7 @@ def main():
         prompts = exp_config.prompts
         assert prompts is not None
 
-        start_code_path = f"{exp_path_root}/{exp_config.config.experiment_name}/z_enc.pt"
+        start_code_path = f"{exp_path_root}/{experiment_name}/z_enc.pt"
         start_code = torch.load(start_code_path).cuda() if os.path.exists(start_code_path) else None
         if start_code is not None:
             start_code = start_code.repeat(batch_size, 1, 1, 1)
