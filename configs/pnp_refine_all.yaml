@@ -1,13 +1,13 @@
 config:
-  experiment_name: "_refine_512_mask_sd" # name of the experiment, used for logging
+  experiment_name: "_refine_512_mask" # name of the experiment, used for logging
   init_img: "./swapped_image.png" # path to the source image
   ddim_steps: 999 # we use 999 steps for the best reconstruction
   save_feature_timesteps: 50
 
 prompts: # text prompts for translations
-  - "a photo of a object, realistic, high resolution, high quality"
+  - "a photo of a facial sketch drawing, realistic, high resolution, high quality"
 
-scale: 2 # unconditional guidance scale. Note that a higher value encourages deviation from the source image
+scale: 4 # unconditional guidance scale. Note that a higher value encourages deviation from the source image
 num_ddim_sampling_steps: 50 # if left empty, defaults to the ddim_steps_callback arg used in the source experiment
 
 # Control the level of structure preservation with injection timestep threshold
