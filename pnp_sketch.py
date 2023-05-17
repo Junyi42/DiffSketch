@@ -69,7 +69,7 @@ def main():
         "--img_dir_path",
         type=str,
         nargs="?",
-        default="PATH_TO_SWAPPED_IMAGES",
+        default="/hdd3/junyi/DiffSketch/data",
         help="path to the feature extraction config file"
     )
     parser.add_argument(
@@ -160,7 +160,7 @@ def main():
 
     for img_path in img_paths: # ../odise/data/test_bench/Gen_mask_512_3500/000000010573_fuse/swapped_image.png
         exp_config = OmegaConf.load(opt.config)
-        experiment_name = img_path.split("/")[-2] + exp_config.config.experiment_name # "000000010573_fuse" +  experiment_name
+        experiment_name =  exp_config.config.experiment_name+img_path.split("/")[-1].split(".")[0] # experiment_name + "01.jpg"
         exp_path_root = setup_config.config.exp_path_root
 
         exp_config.config.seed = -1

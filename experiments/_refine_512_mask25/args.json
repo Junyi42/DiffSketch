@@ -1,0 +1,1 @@
+{"experiment_name": "_refine_512_mask", "init_img": "./swapped_image.png", "ddim_steps": 999, "save_feature_timesteps": [50], "seed": -1, "prompt": "", "scale": 1.0}
