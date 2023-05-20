@@ -158,7 +158,7 @@ def main():
                 img_paths.append(path)
 
 
-    for img_path in img_paths: # ../odise/data/test_bench/Gen_mask_512_3500/000000010573_fuse/swapped_image.png
+    for img_path in tqdm(img_paths): # ../odise/data/test_bench/Gen_mask_512_3500/000000010573_fuse/swapped_image.png
         exp_config = OmegaConf.load(opt.config)
         experiment_name =  exp_config.config.experiment_name+img_path.split("/")[-1].split(".")[0] # experiment_name + "01.jpg"
         exp_path_root = setup_config.config.exp_path_root
@@ -173,6 +173,9 @@ def main():
         save_feature_timesteps = exp_config.config.ddim_steps if exp_config.config.init_img == '' else exp_config.config.save_feature_timesteps
 
         outpath = f"{exp_path_root}/{experiment_name}"
+
+        # if os.path.exists(outpath):
+        #     continue
 
         callback_timesteps_to_save = [save_feature_timesteps]
         if os.path.exists(outpath):
