@@ -156,6 +156,7 @@ def main():
             if file.endswith(".jpg") or file.endswith(".png"):
                 path = os.path.join(root, file)
                 img_paths.append(path)
+    img_paths.sort()
 
 
     for img_path in tqdm(img_paths): # ../odise/data/test_bench/Gen_mask_512_3500/000000010573_fuse/swapped_image.png
@@ -174,8 +175,8 @@ def main():
 
         outpath = f"{exp_path_root}/{experiment_name}"
 
-        # if os.path.exists(outpath):
-        #     continue
+        if os.path.exists(outpath):
+            continue
 
         callback_timesteps_to_save = [save_feature_timesteps]
         if os.path.exists(outpath):
