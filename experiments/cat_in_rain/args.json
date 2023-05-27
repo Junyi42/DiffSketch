@@ -1,0 +1,1 @@
+{"experiment_name": "cat_in_rain", "init_img": "", "prompt": "a photo of a cat in the rain", "scale": 5.0, "ddim_steps": 50, "seed": 4, "save_feature_timesteps": [50]}

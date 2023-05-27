@@ -1,0 +1,1 @@
+{"experiment_name": "sandwich_refine_256_mask_sd", "init_img": "/hdd3/junyi/odise/data/test_bench/Gen_mask_256_3500/000000000283_fuse/swapped_image.png", "ddim_steps": 999, "save_feature_timesteps": [50], "seed": -1, "prompt": "", "scale": 1.0}
