@@ -1,0 +1,7 @@
+config:
+  experiment_name: "cat_on_street"
+  init_img: ""
+  prompt: "a photo of a cat on the street"
+  scale: 5.0
+  ddim_steps: 50
+  seed: 4
