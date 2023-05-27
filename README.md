@@ -65,7 +65,7 @@ All required hyperparameters are specified in `configs/pnp_refine_all.yaml`.
 
 To gather the results, run the notebook `gather.ipynb`.
 
-This notebook will create a directory `results` in the experiment root directory, and will save the results of the experiments in this directory for submission.
+This notebook will create a directory `result` in the root directory, and will gather the results of the experiments in this directory for submission.
 
 ## Additional Results
 
