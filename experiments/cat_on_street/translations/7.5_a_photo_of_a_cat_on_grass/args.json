@@ -1,1 +1,0 @@
-{"source_experiment_name": "cat_on_street", "target_experiment_name": "cat_on_grass1", "prompts": ["a photo of a cat on grass"], "scale": 7.5, "num_ddim_sampling_steps": null, "feature_injection_threshold": 50, "negative_prompt": "a photo of a cat on the street", "negative_prompt_alpha": 0.75, "negative_prompt_schedule": "linear"}

@@ -73,13 +73,6 @@ def main():
         help="path to the feature extraction config file"
     )
     parser.add_argument(
-        "--text_dir_path",
-        type=str,
-        nargs="?",
-        default="PATH_TO_CLASS_INFO",
-        help="path to the feature extraction config file"
-    )
-    parser.add_argument(
         "--ddim_eta",
         type=float,
         default=0.0,
