@@ -1,4 +1,4 @@
-# DiffSketch: Leverage Diffusion Prior to Zero-Shot Line-Drawing-to-Sketch Synthesis
+# DiffSketch: Plug-and-Play Diffusion Features for Zero-Shot Line-Drawing-to-Sketch Synthesis
 
 > *Stable Diffusion* Implementation, our method is built on PnP-Diffusion
 
